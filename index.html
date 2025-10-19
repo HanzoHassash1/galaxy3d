@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Galáxia 3D — Planetas</title>
+<style>
+  html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff}
+  #container{width:100%;height:100%;position:fixed;inset:0;display:block}
+  .ui{position:absolute;z-index:20;left:16px;top:16px;background:rgba(6,10,20,0.45);backdrop-filter:blur(6px);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04)}
+  .ui h1{margin:0;font-size:14px}
+  .ui p{margin:6px 0 0 0;font-size:12px;color:#b8d0ff}
+  .controls{position:absolute;right:16px;top:16px;z-index:20}
+  .controls .panel{background:rgba(6,10,20,0.45);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);backdrop-filter:blur(6px);font-size:13px;color:#b8d0ff}
+  .label{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    pointer-events:auto;
+    color:#fff;
+    font-weight:700;
+    text-shadow:0 6px 18px rgba(0,0,0,0.6), 0 0 10px rgba(124,58,237,0.12);
+    font-size:13px;
+    white-space:nowrap;
+    z-index:15;
+  }
+  button, input {font:inherit}
+  @media (max-width:720px){ .ui{left:10px;top:10px} .controls{right:10px;top:10px} }
+</style>
+</head>
+<body>
+<div id="container"></div>
+
+<div class="ui">
+  <h1>Galáxia 3D</h1>
+  <p>Clique em um planeta para focar. Use o mouse/toque para navegar.</p>
+</div>
+
+<div class="controls" id="controls">
+  <div class="panel">
+    <div style="margin-bottom:8px"><strong>Nomes (vírgula separa)</strong></div>
+    <input id="names" type="text" value="Aurelia,Noctis,Veridian,Kyros,Zelpha,Orionis" style="width:260px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#e6f2ff" />
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button id="apply" style="padding:6px 8px;border-radius:6px;border:none;background:linear-gradient(90deg,#6ee7b7,#7c3aed);color:#041024;font-weight:800;cursor:pointer">Aplicar</button>
+      <button id="resetCam" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#b8d0ff;cursor:pointer">Reset</button>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:#99b6ff">Dica: clique no nome para centralizar o planeta.</div>
+  </div>
+</div>
+
+<!-- Note: The script is now a module -->
+<script type="module">
+// Import Three.js and OrbitControls from a module-compatible CDN
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+
+// 3D Galaxy using Three.js
+let scene, camera, renderer, controls;
+let planets = [];
+const labels = [];
+const container = document.getElementById('container');
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+init();
+animate();
+
+function init(){
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000010, 0.0006);
+
+  // Camera setup
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 10000);
+  camera.position.set(0, 120, 420);
+
+  // Renderer setup
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  // Controls initialization
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 50;
+  controls.maxDistance = 2000;
+
+  // Lights setup
+  const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+  scene.add(ambient);
+
+  const sunLight = new THREE.PointLight(0xfff2c8, 1.4, 3000);
+  sunLight.position.set(0,0,0);
+  scene.add(sunLight);
+
+  // Central star (sun)
+  const sunGeo = new THREE.SphereGeometry(26, 32, 32);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa });
+  const sun = new THREE.Mesh(sunGeo, sunMat);
+  scene.add(sun);
+
+  // Starfield particles
+  createStarfieldParticles();
+
+  // Initial planets generation
+  createPlanetsFromInput();
+
+  // Event listeners
+  window.addEventListener('resize', onWindowResize);
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  document.getElementById('apply').addEventListener('click', ()=>{
+    createPlanetsFromInput();
+  });
+  document.getElementById('names').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ createPlanetsFromInput(); } });
+  document.getElementById('resetCam').addEventListener('click', ()=> resetCamera());
+}
+
+function resetCamera(){
+  controls.reset();
+  camera.position.set(0, 120, 420);
+  controls.update();
+}
+
+function createStarfieldParticles(){
+  const starsCount = 20000;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(starsCount * 3);
+  for(let i=0;i<starsCount;i++){
+    const r = 800 + Math.random()*2200;
+    const theta = Math.random()*Math.PI*2;
+    const phi = (Math.random()-0.5)*Math.PI;
+    const x = r * Math.cos(theta) * Math.cos(phi);
+    const y = r * Math.sin(phi) * 0.6;
+    const z = r * Math.sin(theta) * Math.cos(phi);
+    positions[i*3] = x;
+    positions[i*3+1] = y;
+    positions[i*3+2] = z;
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, transparent: true, opacity: 0.9 });
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+}
+
+function createPlanetsFromInput(){
+  // Remove old planets & labels
+  for(const p of planets){ scene.remove(p.mesh); }
+  planets.length = 0;
+  const existingLabels = document.querySelectorAll('.label');
+  existingLabels.forEach(l => l.remove());
+  labels.length = 0;
+
+  const namesText = document.getElementById('names').value;
+  const names = namesText.split(',').map(s=>s.trim()).filter(Boolean);
+  const baseOrbit = 70;
+  for(let i=0;i<names.length;i++){
+    const name = names[i];
+    const orbit = baseOrbit + i * (80 + Math.random()*20);
+    const size = Math.max(6, 20 - i*2 + Math.random()*6);
+    const speed = 0.2 + Math.random()*0.5 + i*0.02;
+    const color = new THREE.Color().setHSL(((i*0.12)+0.6)%1, 0.6 + Math.random()*0.3, 0.4 + Math.random()*0.15);
+
+    const geo = new THREE.SphereGeometry(size, Math.max(16, Math.round(size)+8), Math.max(12, Math.round(size)+6));
+    const mat = new THREE.MeshStandardMaterial({
+      color: color.clone().multiplyScalar(0.9),
+      metalness: 0.1,
+      roughness: 0.6,
+      emissive: color.clone().multiplyScalar(0.05),
+      emissiveIntensity: 0.5
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData = { orbit, angle: Math.random()*Math.PI*2, speed, name, size };
+    scene.add(mesh);
+
+    if(Math.random() > 0.6){
+      const ringGeo = new THREE.RingGeometry(size*1.4, size*2.4, 64);
+      const ringMat = new THREE.MeshBasicMaterial({ color: color.clone().offsetHSL(0,0,-0.15), side: THREE.DoubleSide, transparent:true, opacity:0.6 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI * 0.45 + (Math.random()*0.2-0.1);
+      mesh.add(ring);
+    }
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = name;
+    label.style.cursor = 'pointer';
+    document.body.appendChild(label);
+    label.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      focusOnPlanet(mesh);
+    });
+
+    planets.push({ mesh, label });
+  }
+}
+
+function focusOnPlanet(mesh){
+  const targetPos = new THREE.Vector3();
+  mesh.getWorldPosition(targetPos);
+  const dir = new THREE.Vector3().subVectors(targetPos, camera.position).multiplyScalar(0.6);
+  const newPos = camera.position.clone().add(dir);
+  
+  let t=0;
+  const start = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const end = newPos;
+  const endTarget = targetPos;
+  
+  const id = setInterval(()=>{
+    t += 0.04;
+    if(t>=1){ t=1; clearInterval(id); }
+    camera.position.lerpVectors(start, end, easeOutCubic(t));
+    controls.target.lerpVectors(startTarget, endTarget, easeOutCubic(t));
+    controls.update();
+  }, 16);
+}
+
+function easeOutCubic(t){ return (--t)*t*t+1; }
+
+function onWindowResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onPointerDown(event){
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = - ((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(planets.map(p=> p.mesh), true);
+  if(intersects.length>0){
+    const m = intersects[0].object;
+    focusOnPlanet(m);
+  }
+}
+
+function updatePlanets(dt){
+  for(const p of planets){
+    const d = p.mesh.userData;
+    d.angle += d.speed * 0.3 * dt;
+    const x = Math.cos(d.angle) * d.orbit;
+    const z = Math.sin(d.angle) * d.orbit;
+    const y = Math.sin(d.angle * 0.4) * (d.orbit*0.06);
+    p.mesh.position.set(x, y, z);
+    p.mesh.rotation.y += 0.003 + (d.size*0.0008);
+  }
+}
+
+function updateLabels(){
+  for(const p of planets){
+    const pos = new THREE.Vector3();
+    p.mesh.getWorldPosition(pos);
+    pos.project(camera);
+    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+    p.label.style.transform = `translate(-50%,-50%) translate(${x}px,${y - 18}px)`;
+    p.label.style.display = (pos.z > 1 ? 'none' : 'block');
+    const dist = camera.position.distanceTo(p.mesh.position);
+    const scale = Math.max(0.7, Math.min(1.4, 800/dist));
+    p.label.style.opacity = (scale<0.72?0.6:1);
+    p.label.style.fontSize = `${12 * scale}px`;
+  }
+}
+
+let last = performance.now();
+function animate(){
+  const now = performance.now();
+  const dt = Math.min(40, now - last)/1000; last = now;
+  requestAnimationFrame(animate);
+  updatePlanets(dt);
+  updateLabels();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+controls.target.set(0,0,0);
+controls.update();
+
+</script>
+</body>
+</html>
