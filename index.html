@@ -28,7 +28,7 @@
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 165, 0, 0.4);
     font-size: 16px;
     white-space: nowrap;
-    pointer-events: none; /* Impede que os textos bloqueiem o clique do mouse */
+    pointer-events: none;
     transition: opacity 0.3s ease;
   }
   #overlay {
@@ -67,187 +67,165 @@
   <p>Clique para iniciar</p>
 </div>
 
-<audio id="music" loop src="https://cdn.pixabay.com/audio/2023/10/11/audio_1451e3c84e.mp3"></audio>
+<!-- Link de música mais estável -->
+<!-- <audio id="music" loop src="https://upload.wikimedia.org/wikipedia/commons/2/21/Long_Way_Home_-_Cinematic_Ambient_Music.ogg"></audio> -->
 
-<!-- O código principal agora é um módulo JavaScript -->
-<script type="module">
-  // Importando as bibliotecas como módulos a partir de um CDN confiável
-  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
-  import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+<!-- Bibliotecas Three.js carregadas da forma clássica e mais compatível -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
 
-  // Lista de frases que irão orbitar
-  const PHRASES = [
-    "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
-    "Alma Gêmea", "Meu Porto Seguro", "Juntos", "Meu Coração é Seu", 
-    "Meu Sol", "Minha Estrela", "Infinito", "Nós Dois", "Felicidade", 
-    "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro"
-  ];
-
-  let scene, camera, renderer, controls;
-  const words = [];
-
-  const overlay = document.getElementById('overlay');
-  const music = document.getElementById('music');
-  const container = document.getElementById('container');
-
-  // A cena só inicia após o clique do usuário
-  overlay.addEventListener('click', () => {
-    overlay.style.opacity = '0';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-    }, 500);
-
-    music.volume = 0.5;
-    music.play().catch(e => console.error("Erro ao tocar música:", e));
+<!-- O nosso script principal, sem type="module" -->
+<script>
+  // Todo o código agora espera a página carregar completamente antes de ser executado
+  window.addEventListener('load', () => {
     
-    init();
-    animate();
-  });
+    // Lista de frases que irão orbitar
+    const PHRASES = [
+      "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
+      "Alma Gêmea", "Meu Porto Seguro", "Juntos", "Meu Coração é Seu", 
+      "Meu Sol", "Minha Estrela", "Infinito", "Nós Dois", "Felicidade", 
+      "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro"
+    ];
 
-  function init() {
-    // --- Cena e Câmera ---
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 100;
+    let scene, camera, renderer, controls;
+    const words = [];
+    let isInitialized = false;
 
-    // --- Renderizador ---
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
+    const overlay = document.getElementById('overlay');
+    // const music = document.getElementById('music');
+    const container = document.getElementById('container');
 
-    // --- Controles de Câmera ---
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 20;
-    controls.maxDistance = 250;
-    controls.autoRotate = true; // Faz a cena girar sozinha
-    controls.autoRotateSpeed = 0.3;
+    // A cena só inicia após o clique do usuário
+    overlay.addEventListener('click', () => {
+      if (isInitialized) return;
+      isInitialized = true;
 
-    // --- Luzes ---
-    const pointLight = new THREE.PointLight(0xffaa55, 2, 500);
-    scene.add(pointLight);
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-    scene.add(ambientLight);
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+      }, 500);
 
-    // --- Elementos da Cena ---
-    createStarfield();
-    createCentralBody();
-    createFloatingWords();
+      // music.volume = 0.5;
+      // music.play().catch(e => console.error("Erro ao tocar música:", e));
+      
+      init();
+      animate();
+    });
 
-    // --- Redimensionamento da Janela ---
-    window.addEventListener('resize', onWindowResize);
-  }
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 100;
 
-  function createStarfield() {
-    const starGeometry = new THREE.BufferGeometry();
-    const starCount = 5000;
-    const posArray = new Float32Array(starCount * 3);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
 
-    for (let i = 0; i < starCount; i++) {
-        const u = Math.random();
-        const v = Math.random();
-        const theta = 2 * Math.PI * u;
-        const phi = Math.acos(2 * v - 1);
-        const r = 300 + Math.random() * 200;
-        
-        posArray[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        posArray[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-        posArray[i * 3 + 2] = r * Math.cos(phi);
+      // Agora, OrbitControls faz parte do objeto global THREE e está garantidamente carregado
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.screenSpacePanning = false;
+      controls.minDistance = 20;
+      controls.maxDistance = 250;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.3;
+
+      const pointLight = new THREE.PointLight(0xffaa55, 2, 500);
+      scene.add(pointLight);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+      scene.add(ambientLight);
+
+      createStarfield();
+      createCentralBody();
+      createFloatingWords();
+
+      window.addEventListener('resize', onWindowResize);
     }
 
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const starMaterial = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.7,
-        transparent: true,
-        opacity: 0.8
-    });
-    const starMesh = new THREE.Points(starGeometry, starMaterial);
-    scene.add(starMesh);
-  }
-  
-  function createCentralBody() {
-    // Sol
-    const sunGeometry = new THREE.SphereGeometry(10, 32, 32);
-    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
-    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    scene.add(sun);
-
-    // Anel
-    const ringGeometry = new THREE.TorusGeometry(20, 1.5, 2, 100);
-    const ringMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xffdd88, 
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.8
-    });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = Math.PI / 2.2;
-    scene.add(ring);
-  }
-
-  function createFloatingWords() {
-    PHRASES.forEach(text => {
-      const label = document.createElement('div');
-      label.className = 'word-label';
-      label.textContent = text;
-      document.body.appendChild(label);
-
-      const radius = 30 + Math.random() * 60; // Distância do centro
-      const speed = (0.0002 + Math.random() * 0.0005) * (Math.random() > 0.5 ? 1 : -1);
-      const angle = Math.random() * Math.PI * 2;
-      const yOffset = (Math.random() - 0.5) * 40; // Variação de altura
-
-      words.push({
-        label,
-        radius,
-        speed,
-        angle,
-        yOffset,
-        baseOpacity: 0.5 + Math.random() * 0.5,
-        position: new THREE.Vector3() 
-      });
-    });
-  }
-
-  function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  }
-
-  function updateWordLabels() {
-    words.forEach(word => {
-      word.angle += word.speed * (16.67);
-      const x = Math.cos(word.angle) * word.radius;
-      const z = Math.sin(word.angle) * word.radius;
-      word.position.set(x, word.yOffset, z);
-
-      const screenPosition = word.position.clone().project(camera);
-      const screenX = (screenPosition.x + 1) * window.innerWidth / 2;
-      const screenY = (-screenPosition.y + 1) * window.innerHeight / 2;
-      
-      word.label.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
-      
-      const distanceToCamera = camera.position.distanceTo(word.position);
-      if (screenPosition.z > 1) {
-          word.label.style.opacity = 0;
-      } else {
-          const opacity = Math.max(0, 1 - (distanceToCamera / 200)) * word.baseOpacity;
-          word.label.style.opacity = opacity;
+    function createStarfield() {
+      const starGeometry = new THREE.BufferGeometry();
+      const starCount = 5000;
+      const posArray = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+          const u = Math.random();
+          const v = Math.random();
+          const theta = 2 * Math.PI * u;
+          const phi = Math.acos(2 * v - 1);
+          const r = 300 + Math.random() * 200;
+          posArray[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          posArray[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+          posArray[i * 3 + 2] = r * Math.cos(phi);
       }
-    });
-  }
+      starGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
+      const starMesh = new THREE.Points(starGeometry, starMaterial);
+      scene.add(starMesh);
+    }
+    
+    function createCentralBody() {
+      const sunGeometry = new THREE.SphereGeometry(10, 32, 32);
+      const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+      const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+      scene.add(sun);
 
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    updateWordLabels();
-    renderer.render(scene, camera);
-  }
+      const ringGeometry = new THREE.TorusGeometry(20, 1.5, 2, 100);
+      const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.rotation.x = Math.PI / 2.2;
+      scene.add(ring);
+    }
+
+    function createFloatingWords() {
+      PHRASES.forEach(text => {
+        const label = document.createElement('div');
+        label.className = 'word-label';
+        label.textContent = text;
+        document.body.appendChild(label);
+        const radius = 30 + Math.random() * 60;
+        const speed = (0.0002 + Math.random() * 0.0005) * (Math.random() > 0.5 ? 1 : -1);
+        const angle = Math.random() * Math.PI * 2;
+        const yOffset = (Math.random() - 0.5) * 40;
+        words.push({ label, radius, speed, angle, yOffset, baseOpacity: 0.5 + Math.random() * 0.5, position: new THREE.Vector3() });
+      });
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function updateWordLabels() {
+      words.forEach(word => {
+        word.angle += word.speed * 16.67;
+        const x = Math.cos(word.angle) * word.radius;
+        const z = Math.sin(word.angle) * word.radius;
+        word.position.set(x, word.yOffset, z);
+
+        const screenPosition = word.position.clone().project(camera);
+        const screenX = (screenPosition.x + 1) * window.innerWidth / 2;
+        const screenY = (-screenPosition.y + 1) * window.innerHeight / 2;
+        word.label.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
+        
+        const distanceToCamera = camera.position.distanceTo(word.position);
+        if (screenPosition.z > 1) {
+            word.label.style.opacity = 0;
+        } else {
+            const opacity = Math.max(0, 1 - (distanceToCamera / 200)) * word.baseOpacity;
+            word.label.style.opacity = opacity;
+        }
+      });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      updateWordLabels();
+      renderer.render(scene, camera);
+    }
+  });
 </script>
 </body>
 </html>
