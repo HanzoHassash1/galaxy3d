@@ -67,14 +67,14 @@
   <p>Clique para iniciar</p>
 </div>
 
-<!-- Você pode trocar o "src" por qualquer link de música que desejar -->
 <audio id="music" loop src="https://cdn.pixabay.com/audio/2023/10/11/audio_1451e3c84e.mp3"></audio>
 
-<!-- Bibliotecas Three.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
+<!-- O código principal agora é um módulo JavaScript -->
+<script type="module">
+  // Importando as bibliotecas como módulos a partir de um CDN confiável
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
+  import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
 
-<script>
   // Lista de frases que irão orbitar
   const PHRASES = [
     "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
@@ -98,7 +98,7 @@
     }, 500);
 
     music.volume = 0.5;
-    music.play();
+    music.play().catch(e => console.error("Erro ao tocar música:", e));
     
     init();
     animate();
@@ -117,7 +117,7 @@
     container.appendChild(renderer.domElement);
 
     // --- Controles de Câmera ---
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.screenSpacePanning = false;
@@ -208,7 +208,6 @@
         angle,
         yOffset,
         baseOpacity: 0.5 + Math.random() * 0.5,
-        // Vetor 3D para guardar a posição no espaço
         position: new THREE.Vector3() 
       });
     });
@@ -222,29 +221,21 @@
 
   function updateWordLabels() {
     words.forEach(word => {
-      // Atualiza o ângulo para fazer a órbita
-      word.angle += word.speed * (16.67); // Movimento constante
-
-      // Calcula a nova posição 3D
+      word.angle += word.speed * (16.67);
       const x = Math.cos(word.angle) * word.radius;
       const z = Math.sin(word.angle) * word.radius;
       word.position.set(x, word.yOffset, z);
 
-      // Projeta a posição 3D para a tela 2D
       const screenPosition = word.position.clone().project(camera);
       const screenX = (screenPosition.x + 1) * window.innerWidth / 2;
       const screenY = (-screenPosition.y + 1) * window.innerHeight / 2;
       
-      // Atualiza a posição do elemento HTML
       word.label.style.transform = `translate(-50%, -50%) translate(${screenX}px, ${screenY}px)`;
       
-      // Esconde o texto se ele estiver atrás da câmera
       const distanceToCamera = camera.position.distanceTo(word.position);
-      // O valor de z após a projeção nos diz se está na frente (z < 1) ou atrás (z > 1)
       if (screenPosition.z > 1) {
           word.label.style.opacity = 0;
       } else {
-          // Fade com base na distância
           const opacity = Math.max(0, 1 - (distanceToCamera / 200)) * word.baseOpacity;
           word.label.style.opacity = opacity;
       }
@@ -260,4 +251,5 @@
 </script>
 </body>
 </html>
+
 
