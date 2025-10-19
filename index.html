@@ -63,7 +63,7 @@
 <div id="container"></div>
 
 <div id="overlay">
-  <h1>Galáxia de Amor</h1>
+  <h1>Nossa Galáxia</h1>
   <p>Clique para iniciar</p>
 </div>
 
@@ -92,14 +92,20 @@
 
     const PHRASES = [
       "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
+
       "Alma Gêmea", "Meu Porto Seguro", "Juntos", "Meu Coração é Seu", 
+
       "Meu Sol", "Minha Estrela", "Infinito", "Nós Dois", "Felicidade", 
-      "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro"
+
+      "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro", "Minha Gatinha",
+
+      "Minha Linda", "Melhor Esposa"
     ];
 
     let scene, camera, renderer, controls;
     const words = [];
     let isInitialized = false;
+    let accretionDisk; // Variável para o disco de acreção
 
     const overlay = document.getElementById('overlay');
     const container = document.getElementById('container');
@@ -127,7 +133,6 @@
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
       
-      // A variável OrbitControls vem diretamente do 'import', 100% garantido.
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
@@ -136,14 +141,13 @@
       controls.maxDistance = 250;
       controls.autoRotate = true;
       controls.autoRotateSpeed = 0.3;
-
-      const pointLight = new THREE.PointLight(0xffaa55, 2, 500);
-      scene.add(pointLight);
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+      
+      // Uma luz ambiente suave para que as palavras sejam visíveis
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
       scene.add(ambientLight);
 
       createStarfield();
-      createCentralBody();
+      createBlackHole(); // Função alterada
       createFloatingWords();
 
       window.addEventListener('resize', onWindowResize);
@@ -169,17 +173,42 @@
       scene.add(starMesh);
     }
     
-    function createCentralBody() {
-      const sunGeometry = new THREE.SphereGeometry(10, 32, 32);
-      const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
-      const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-      scene.add(sun);
+    // Nova função para criar o buraco negro e o disco de acreção
+    function createBlackHole() {
+      // A esfera central preta
+      const blackHoleGeometry = new THREE.SphereGeometry(10, 64, 64);
+      const blackHoleMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
+      scene.add(blackHole);
 
-      const ringGeometry = new THREE.TorusGeometry(20, 1.5, 2, 100);
-      const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
-      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-      ring.rotation.x = Math.PI / 2.2;
-      scene.add(ring);
+      // Função para criar a textura do disco de acreção
+      function createAccretionDiskTexture() {
+          const canvas = document.createElement('canvas');
+          canvas.width = 256;
+          canvas.height = 256;
+          const context = canvas.getContext('2d');
+          const gradient = context.createRadialGradient(128, 128, 50, 128, 128, 128);
+          gradient.addColorStop(0.3, 'rgba(255, 200, 100, 1)');
+          gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.8)');
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, 256, 256);
+          return new THREE.CanvasTexture(canvas);
+      }
+
+      // Geometria e material do disco
+      const accretionDiskTexture = createAccretionDiskTexture();
+      const accretionDiskGeometry = new THREE.RingGeometry(11, 35, 128);
+      const accretionDiskMaterial = new THREE.MeshBasicMaterial({
+          map: accretionDiskTexture,
+          side: THREE.DoubleSide,
+          transparent: true,
+          blending: THREE.AdditiveBlending // Efeito de brilho
+      });
+      accretionDisk = new THREE.Mesh(accretionDiskGeometry, accretionDiskMaterial);
+      accretionDisk.rotation.x = Math.PI / 2.1;
+      accretionDisk.name = "accretionDisk";
+      scene.add(accretionDisk);
     }
 
     function createFloatingWords() {
@@ -188,7 +217,7 @@
         label.className = 'word-label';
         label.textContent = text;
         document.body.appendChild(label);
-        const radius = 30 + Math.random() * 60;
+        const radius = 40 + Math.random() * 60; // Aumentar raio para não colidir com o disco
         const speed = (0.0002 + Math.random() * 0.0005) * (Math.random() > 0.5 ? 1 : -1);
         const angle = Math.random() * Math.PI * 2;
         const yOffset = (Math.random() - 0.5) * 40;
@@ -227,6 +256,12 @@
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
+
+      // Animar a rotação do disco de acreção
+      if (accretionDisk) {
+        accretionDisk.rotation.z -= 0.002;
+      }
+
       updateWordLabels();
       renderer.render(scene, camera);
     }
