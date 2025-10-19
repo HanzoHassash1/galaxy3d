@@ -67,18 +67,11 @@
   <p>Clique para iniciar</p>
 </div>
 
-<!-- Link de música mais estável -->
-<!-- <audio id="music" loop src="https://upload.wikimedia.org/wikipedia/commons/2/21/Long_Way_Home_-_Cinematic_Ambient_Music.ogg"></audio> -->
+<!-- Scripts carregados no final do body para garantir que tudo está pronto -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
 
-<!-- Bibliotecas Three.js carregadas da forma clássica e mais compatível -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
-
-<!-- O nosso script principal, sem type="module" -->
 <script>
-  // Todo o código agora espera a página carregar completamente antes de ser executado
-  window.addEventListener('load', () => {
-    
     // Lista de frases que irão orbitar
     const PHRASES = [
       "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
@@ -92,7 +85,6 @@
     let isInitialized = false;
 
     const overlay = document.getElementById('overlay');
-    // const music = document.getElementById('music');
     const container = document.getElementById('container');
 
     // A cena só inicia após o clique do usuário
@@ -104,9 +96,6 @@
       setTimeout(() => {
         overlay.style.display = 'none';
       }, 500);
-
-      // music.volume = 0.5;
-      // music.play().catch(e => console.error("Erro ao tocar música:", e));
       
       init();
       animate();
@@ -225,9 +214,7 @@
       updateWordLabels();
       renderer.render(scene, camera);
     }
-  });
 </script>
 </body>
 </html>
-
 
