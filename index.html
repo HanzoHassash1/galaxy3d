@@ -67,12 +67,29 @@
   <p>Clique para iniciar</p>
 </div>
 
-<!-- Scripts carregados no final do body para garantir que tudo está pronto -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+<!-- 
+  IMPORT MAP: A solução definitiva.
+  Isto diz ao navegador "onde encontrar" as bibliotecas quando usamos a palavra 'import'.
+  Ele resolve todos os problemas de carregamento e ordem.
+-->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+    }
+  }
+</script>
 
-<script>
-    // Lista de frases que irão orbitar
+<!-- 
+  SCRIPT PRINCIPAL COMO MÓDULO:
+  Agora, o nosso código principal é um "módulo", o que lhe permite usar 'import'.
+-->
+<script type="module">
+    // Importamos as bibliotecas explicitamente. O navegador espera que elas carreguem.
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
     const PHRASES = [
       "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
       "Alma Gêmea", "Meu Porto Seguro", "Juntos", "Meu Coração é Seu", 
@@ -87,7 +104,6 @@
     const overlay = document.getElementById('overlay');
     const container = document.getElementById('container');
 
-    // A cena só inicia após o clique do usuário
     overlay.addEventListener('click', () => {
       if (isInitialized) return;
       isInitialized = true;
@@ -110,9 +126,9 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
-
-      // Agora, OrbitControls faz parte do objeto global THREE e está garantidamente carregado
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      
+      // A variável OrbitControls vem diretamente do 'import', 100% garantido.
+      controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
