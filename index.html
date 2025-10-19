@@ -48,9 +48,9 @@
 </div>
 
 <script type="module">
-// CORREÇÃO: Importando Three.js e OrbitControls de URLs completas
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+// CORREÇÃO: Usando um CDN compatível com políticas de segurança restritas (CSP)
+import * as THREE from 'https://esm.sh/three@0.158.0';
+import { OrbitControls } from 'https://esm.sh/three@0.158.0/examples/jsm/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls;
 let planets = [];
