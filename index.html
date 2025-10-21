@@ -142,57 +142,63 @@
 
     function createNebulaCloud() {
         const loader = new THREE.TextureLoader();
-        // Usar um proxy para evitar problemas de CORS ao ler os pixeis da imagem
-        loader.load('https://api.codetabs.com/v1/proxy/?quest=https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg/1024px-Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg', 
-        (texture) => {
-            const img = texture.image;
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
+        // Alterado para carregar a imagem localmente a partir do seu repositório
+        loader.load(
+            './nebula.jpg', // Caminho relativo para a imagem
+            (texture) => {
+                const img = texture.image;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
 
-            const geometry = new THREE.BufferGeometry();
-            const positions = [];
-            const colors = [];
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
 
-            const density = 2; // Aumentar este valor para mais partículas
-            for (let y = 0; y < canvas.height; y += density) {
-                for (let x = 0; x < canvas.width; x += density) {
-                    const i = (y * canvas.width + x) * 4;
-                    const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
-                    if (brightness > 20) { // Só criar partículas para pixeis minimamente brilhantes
-                        const pX = (x - canvas.width / 2) * 1.5;
-                        const pY = -(y - canvas.height / 2) * 1.5;
-                        const pZ = (Math.random() - 0.5) * 50; // Profundidade da nuvem
-                        positions.push(pX, pY, pZ);
+                const density = 2;
+                for (let y = 0; y < canvas.height; y += density) {
+                    for (let x = 0; x < canvas.width; x += density) {
+                        const i = (y * canvas.width + x) * 4;
+                        const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+                        if (brightness > 20) {
+                            const pX = (x - canvas.width / 2) * 1.5;
+                            const pY = -(y - canvas.height / 2) * 1.5;
+                            const pZ = (Math.random() - 0.5) * 50;
+                            positions.push(pX, pY, pZ);
 
-                        const r = data[i] / 255;
-                        const g = data[i + 1] / 255;
-                        const b = data[i + 2] / 255;
-                        colors.push(r, g, b);
+                            const r = data[i] / 255;
+                            const g = data[i + 1] / 255;
+                            const b = data[i + 2] / 255;
+                            colors.push(r, g, b);
+                        }
                     }
                 }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 1.5,
+                    vertexColors: true,
+                    blending: THREE.AdditiveBlending,
+                    transparent: true,
+                    opacity: 0.7,
+                    depthWrite: false,
+                });
+
+                nebulaCloud = new THREE.Points(geometry, material);
+                nebulaCloud.position.set(0, 0, -500);
+                scene.add(nebulaCloud);
+            },
+            undefined, 
+            (err) => {
+                console.error('Ocorreu um erro ao carregar a textura da nebulosa:', err);
             }
-
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            
-            const material = new THREE.PointsMaterial({
-                size: 1.5,
-                vertexColors: true,
-                blending: THREE.AdditiveBlending,
-                transparent: true,
-                opacity: 0.7,
-                depthWrite: false,
-            });
-
-            nebulaCloud = new THREE.Points(geometry, material);
-            nebulaCloud.position.set(0, 0, -500); // Posicionar a nuvem bem ao fundo
-            scene.add(nebulaCloud);
-        });
+        );
     }
 
     function createStarfield() {
