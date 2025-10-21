@@ -63,15 +63,10 @@
 <div id="container"></div>
 
 <div id="overlay">
-  <h1>Nossa Galáxia</h1>
+  <h1>Galáxia de Amor</h1>
   <p>Clique para iniciar</p>
 </div>
 
-<!-- 
-  IMPORT MAP: A solução definitiva.
-  Isto diz ao navegador "onde encontrar" as bibliotecas quando usamos a palavra 'import'.
-  Ele resolve todos os problemas de carregamento e ordem.
--->
 <script type="importmap">
   {
     "imports": {
@@ -81,31 +76,21 @@
   }
 </script>
 
-<!-- 
-  SCRIPT PRINCIPAL COMO MÓDULO:
-  Agora, o nosso código principal é um "módulo", o que lhe permite usar 'import'.
--->
 <script type="module">
-    // Importamos as bibliotecas explicitamente. O navegador espera que elas carreguem.
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const PHRASES = [
       "Meu Amor", "Minha Vida", "Te Amo", "Para Sempre", "Meu Tudo", 
-
       "Alma Gêmea", "Meu Porto Seguro", "Juntos", "Meu Coração é Seu", 
-
       "Meu Sol", "Minha Estrela", "Infinito", "Nós Dois", "Felicidade", 
-
-      "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro", "Minha Gatinha",
-
-      "Minha Linda", "Melhor Esposa"
+      "Carinho", "Paixão", "Eterno", "Meu Anjo", "Meu Tesouro"
     ];
 
     let scene, camera, renderer, controls;
     const words = [];
     let isInitialized = false;
-    let accretionDisk; // Variável para o disco de acreção
+    let accretionDisk, nebulaCloud; 
 
     const overlay = document.getElementById('overlay');
     const container = document.getElementById('container');
@@ -125,9 +110,11 @@
 
     function init() {
       scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 100;
+      scene.background = new THREE.Color(0x000000);
 
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+      camera.position.z = 100;
+      
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
@@ -138,50 +125,102 @@
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
       controls.minDistance = 20;
-      controls.maxDistance = 250;
+      controls.maxDistance = 600; 
       controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.3;
+      controls.autoRotateSpeed = 0.2;
       
-      // Uma luz ambiente suave para que as palavras sejam visíveis
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
       scene.add(ambientLight);
 
+      createNebulaCloud();
       createStarfield();
-      createBlackHole(); // Função alterada
+      createBlackHole();
       createFloatingWords();
 
       window.addEventListener('resize', onWindowResize);
     }
 
+    function createNebulaCloud() {
+        const loader = new THREE.TextureLoader();
+        // Usar um proxy para evitar problemas de CORS ao ler os pixeis da imagem
+        loader.load('https://api.codetabs.com/v1/proxy/?quest=https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg/1024px-Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg', 
+        (texture) => {
+            const img = texture.image;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+
+            const density = 2; // Aumentar este valor para mais partículas
+            for (let y = 0; y < canvas.height; y += density) {
+                for (let x = 0; x < canvas.width; x += density) {
+                    const i = (y * canvas.width + x) * 4;
+                    const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+                    if (brightness > 20) { // Só criar partículas para pixeis minimamente brilhantes
+                        const pX = (x - canvas.width / 2) * 1.5;
+                        const pY = -(y - canvas.height / 2) * 1.5;
+                        const pZ = (Math.random() - 0.5) * 50; // Profundidade da nuvem
+                        positions.push(pX, pY, pZ);
+
+                        const r = data[i] / 255;
+                        const g = data[i + 1] / 255;
+                        const b = data[i + 2] / 255;
+                        colors.push(r, g, b);
+                    }
+                }
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.7,
+                depthWrite: false,
+            });
+
+            nebulaCloud = new THREE.Points(geometry, material);
+            nebulaCloud.position.set(0, 0, -500); // Posicionar a nuvem bem ao fundo
+            scene.add(nebulaCloud);
+        });
+    }
+
     function createStarfield() {
       const starGeometry = new THREE.BufferGeometry();
-      const starCount = 5000;
+      const starCount = 2000;
       const posArray = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
           const u = Math.random();
           const v = Math.random();
           const theta = 2 * Math.PI * u;
           const phi = Math.acos(2 * v - 1);
-          const r = 300 + Math.random() * 200;
+          const r = 400 + Math.random() * 500;
           posArray[i * 3] = r * Math.sin(phi) * Math.cos(theta);
           posArray[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
           posArray[i * 3 + 2] = r * Math.cos(phi);
       }
       starGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-      const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
+      const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, transparent: true, opacity: 0.8 });
       const starMesh = new THREE.Points(starGeometry, starMaterial);
       scene.add(starMesh);
     }
     
-    // Nova função para criar o buraco negro e o disco de acreção
     function createBlackHole() {
-      // A esfera central preta
       const blackHoleGeometry = new THREE.SphereGeometry(10, 64, 64);
       const blackHoleMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
       scene.add(blackHole);
 
-      // Função para criar a textura do disco de acreção
       function createAccretionDiskTexture() {
           const canvas = document.createElement('canvas');
           canvas.width = 256;
@@ -196,18 +235,16 @@
           return new THREE.CanvasTexture(canvas);
       }
 
-      // Geometria e material do disco
       const accretionDiskTexture = createAccretionDiskTexture();
       const accretionDiskGeometry = new THREE.RingGeometry(11, 35, 128);
       const accretionDiskMaterial = new THREE.MeshBasicMaterial({
           map: accretionDiskTexture,
           side: THREE.DoubleSide,
           transparent: true,
-          blending: THREE.AdditiveBlending // Efeito de brilho
+          blending: THREE.AdditiveBlending 
       });
       accretionDisk = new THREE.Mesh(accretionDiskGeometry, accretionDiskMaterial);
       accretionDisk.rotation.x = Math.PI / 2.1;
-      accretionDisk.name = "accretionDisk";
       scene.add(accretionDisk);
     }
 
@@ -217,7 +254,7 @@
         label.className = 'word-label';
         label.textContent = text;
         document.body.appendChild(label);
-        const radius = 40 + Math.random() * 60; // Aumentar raio para não colidir com o disco
+        const radius = 40 + Math.random() * 60; 
         const speed = (0.0002 + Math.random() * 0.0005) * (Math.random() > 0.5 ? 1 : -1);
         const angle = Math.random() * Math.PI * 2;
         const yOffset = (Math.random() - 0.5) * 40;
@@ -257,9 +294,12 @@
       requestAnimationFrame(animate);
       controls.update();
 
-      // Animar a rotação do disco de acreção
       if (accretionDisk) {
         accretionDisk.rotation.z -= 0.002;
+      }
+      
+      if (nebulaCloud) {
+        nebulaCloud.rotation.y += 0.0001;
       }
 
       updateWordLabels();
