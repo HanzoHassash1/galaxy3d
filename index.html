@@ -90,7 +90,10 @@
     let scene, camera, renderer, controls;
     const words = [];
     let isInitialized = false;
-    let accretionDisk, nebulaCloud; 
+    let nebulaCloud, blackHolePlane; 
+
+    // A imagem da nebulosa, agora embutida como texto (Base64)
+    const nebulaBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAQAAwADASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAgABAwQFBgcI/8QAVxAAAQMCBAQDBgMEBgcFBgMJEQECAxEEBRIhMQZBUSITYXEigZEyobEHFEJSctFioeHwM2NzgpKywhUkQ3OiwvElNERUY4STo9NUVaPDF0Vlc4T/xAAaAQEBAQEBAQEAAAAAAAAAAAAAAQIDBAUG/8QALxEBAQACAgEDAwMDBAMBAQEAAAECEQMhEjFBBBMiURRhcUKBkaGxMhXwUsHR4f/aAAwDAQACEQMRAD8A6fV6jI6Z0c8L2ujc1SAaUqc0Vw7n0Kj+0P/wBwf5W/vXz3N6t3E8m03Jg3l/V5d+X3189mS+e43lZceWf/Vb0Z20D2h/+4P8AK396faH/AO4P8rf3r57mZJxu/wAp9y+zP/r2P2h/+4P8rf3p9of/ALg/yt/evnuZkmN3+Ue5fZf9ex+0P/3B/lb+9PtD/wDcH+Vv7189zMkxv/yj3L7L/r2P2h/+4P8AK396faH/AO4P8rf3r57mZJjf/lHuX2X/AF7H7Q//AHB/lb+9PtD/APcH+Vv7189zMkxv/wAqPcvsv+vY/aH/AO4P8rf3p9of/uD/ACt/evnuZkmN/+Ue5fZf9ex+0P8A9wf5W/vT7Q//AHB/lb+9fPczJMb/APKPcvsv+vY/aH/7g/yt/en2h/8AuD/K396+e5mSY3/5R7l9l/17H7Q//cH+Vv70+0P/ANwf5W/vXz3MyTG//KPcvsv+vY/aH/7g/wArf3p9of8A7g/yt/evnuZkmN/+Ue5fZf8AXsftD/8AcH+Vv70+0P8A9wf5W/vXz3MyTG//ACj3L7L/AK9j9of/ALg/yt/en2h/+4P8rf3r57mZJjf/AJR7l9l/17H7Q/8A3B/lb+9PtD/9wf5W/vXz3MyTG/8Ayj3L7L/r2P2h/wDuD/K396faH/7g/wArf3r57mZJjf8A5R7l9l/17H7Q/wD3B/lb+9PtD/8AcH+Vv7189zMkxv8A8o9y+y/69j9of/uD/K396faH/wC4P8rf3r57mZJjf/lHuX2X/Xsf/9k=";
 
     const overlay = document.getElementById('overlay');
     const container = document.getElementById('container');
@@ -142,9 +145,9 @@
 
     function createNebulaCloud() {
         const loader = new THREE.TextureLoader();
-        // Alterado para carregar a imagem localmente a partir do seu repositório
+        // Carregar a imagem a partir do texto Base64
         loader.load(
-            './nebula.jpg', // Caminho relativo para a imagem
+            nebulaBase64, 
             (texture) => {
                 const img = texture.image;
                 const canvas = document.createElement('canvas');
@@ -164,7 +167,7 @@
                     for (let x = 0; x < canvas.width; x += density) {
                         const i = (y * canvas.width + x) * 4;
                         const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
-                        if (brightness > 20) {
+                        if (brightness > 10) { // Limiar de brilho baixo
                             const pX = (x - canvas.width / 2) * 1.5;
                             const pY = -(y - canvas.height / 2) * 1.5;
                             const pZ = (Math.random() - 0.5) * 50;
@@ -178,7 +181,7 @@
                     }
                 }
 
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('position', new THREE.Float33BufferAttribute(positions, 3));
                 geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                 
                 const material = new THREE.PointsMaterial({
@@ -222,36 +225,20 @@
     }
     
     function createBlackHole() {
-      const blackHoleGeometry = new THREE.SphereGeometry(10, 64, 64);
-      const blackHoleMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-      const blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
-      scene.add(blackHole);
-
-      function createAccretionDiskTexture() {
-          const canvas = document.createElement('canvas');
-          canvas.width = 256;
-          canvas.height = 256;
-          const context = canvas.getContext('2d');
-          const gradient = context.createRadialGradient(128, 128, 50, 128, 128, 128);
-          gradient.addColorStop(0.3, 'rgba(255, 200, 100, 1)');
-          gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.8)');
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          context.fillStyle = gradient;
-          context.fillRect(0, 0, 256, 256);
-          return new THREE.CanvasTexture(canvas);
-      }
-
-      const accretionDiskTexture = createAccretionDiskTexture();
-      const accretionDiskGeometry = new THREE.RingGeometry(11, 35, 128);
-      const accretionDiskMaterial = new THREE.MeshBasicMaterial({
-          map: accretionDiskTexture,
-          side: THREE.DoubleSide,
+      const loader = new THREE.TextureLoader();
+      loader.load('./blackhole.jpg', (texture) => {
+        const planeGeometry = new THREE.PlaneGeometry(120, 60);
+        const planeMaterial = new THREE.MeshBasicMaterial({
+          map: texture,
           transparent: true,
-          blending: THREE.AdditiveBlending 
+          blending: THREE.AdditiveBlending,
+          depthWrite: false, 
+        });
+        
+        blackHolePlane = new THREE.Mesh(planeGeometry, planeMaterial);
+        blackHolePlane.rotation.x = Math.PI / 18;
+        scene.add(blackHolePlane);
       });
-      accretionDisk = new THREE.Mesh(accretionDiskGeometry, accretionDiskMaterial);
-      accretionDisk.rotation.x = Math.PI / 2.1;
-      scene.add(accretionDisk);
     }
 
     function createFloatingWords() {
@@ -260,7 +247,7 @@
         label.className = 'word-label';
         label.textContent = text;
         document.body.appendChild(label);
-        const radius = 40 + Math.random() * 60; 
+        const radius = 70 + Math.random() * 60; 
         const speed = (0.0002 + Math.random() * 0.0005) * (Math.random() > 0.5 ? 1 : -1);
         const angle = Math.random() * Math.PI * 2;
         const yOffset = (Math.random() - 0.5) * 40;
@@ -300,12 +287,12 @@
       requestAnimationFrame(animate);
       controls.update();
 
-      if (accretionDisk) {
-        accretionDisk.rotation.z -= 0.002;
-      }
-      
       if (nebulaCloud) {
         nebulaCloud.rotation.y += 0.0001;
+      }
+      
+      if (blackHolePlane) {
+        blackHolePlane.rotation.z -= 0.0005;
       }
 
       updateWordLabels();
